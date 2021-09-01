@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package local_webhook_tester.transport;
+option go_package = "local-webhook-tester/transport";
+
+message HttpRequest {
+  string method = 1;
+  string path = 2;
+  string body = 3;
+  repeated string headers = 4;
+}
+
+message HttpResponse {
+  int32 response_code = 1;
+  string body = 2;
+  repeated string headers = 3;
+}
+
+message ProxyStartResponse {
+  string base_url = 1;
+}
+
+message ReverseProxyResponse {
+  oneof response {
+    HttpRequest http_request = 1;
+    ProxyStartResponse proxy_start_response = 2;
+  }
+}
+
+service HttpReverseProxy {
+  rpc ReverseProxy(stream HttpResponse) returns (stream ReverseProxyResponse) {}
+}
