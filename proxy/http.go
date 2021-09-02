@@ -28,8 +28,11 @@ func convertRequest(request *http.Request) (*transport.HttpRequest, error) {
 	if err != nil {
 		return nil, err
 	}
-	headers := make([]string, len(request.Header))
+	headers := make([]string, 0)
 	for header, values := range request.Header {
+		if header == "" {
+			continue
+		}
 		for _, val := range values {
 			headers = append(headers, fmt.Sprintf("%s: %s", header, val))
 		}
@@ -37,7 +40,7 @@ func convertRequest(request *http.Request) (*transport.HttpRequest, error) {
 
 	return &transport.HttpRequest{
 		Method:  request.Method,
-		Path:    path,
+		Path:    fmt.Sprintf("%s?%s", path, request.URL.RawQuery),
 		Body:    string(bodyString),
 		Headers: headers,
 	}, nil

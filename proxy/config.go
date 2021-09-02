@@ -17,6 +17,7 @@ func readConfig() (*ServerConfig, error) {
 	v.SetConfigType("yaml")
 	v.AddConfigPath(".")
 	err := v.ReadInConfig()
+	v.AutomaticEnv()
 	if err != nil {
 		return nil, err
 	}

@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"flag"
 	"google.golang.org/grpc"
 	"io"
 	"local-webhook-tester/transport"
+	"log"
 	"net/http"
+	"net/url"
+	"os"
 )
 
 func echo(writer http.ResponseWriter, request *http.Request) {
@@ -16,10 +19,25 @@ func echo(writer http.ResponseWriter, request *http.Request) {
 }
 
 func main() {
-	go http.ListenAndServe(":8082", http.HandlerFunc(echo))
+	allowInsecure := flag.Bool("insecure", false, "Allow the GRPC client to connect over HTTP")
+	proxyServer := flag.String("proxy-server", "localhost:3032", "GRPC server URL")
+	server := flag.String("server", "http://localhost:8082", "URL to which to proxy requests")
+	runTestServer := flag.Bool("run-test-server", false, "")
+
+	flag.Parse()
+
+	if *runTestServer {
+		go http.ListenAndServe(":8082", http.HandlerFunc(echo))
+	}
+
+	logger := log.New(os.Stdout, "[client] ", log.LstdFlags)
+
 	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	conn, err := grpc.Dial(":3032", opts...)
+	if *allowInsecure {
+		opts = append(opts, grpc.WithInsecure())
+	}
+
+	conn, err := grpc.Dial(*proxyServer, opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -33,18 +51,28 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(response)
+	sr := message.Response.(*transport.ReverseProxyResponse_ProxyStartResponse)
+	logger.Printf("Set http calls to point to %s", sr.ProxyStartResponse.BaseUrl)
 
 	for {
 		req := transport.ReverseProxyResponse{}
 		err = response.RecvMsg(&req)
-		fmt.Println(req.Response)
+		if err != nil {
+			panic(err)
+		}
+		logger.Println(req.Response)
 
 		switch x := req.Response.(type) {
 		case *transport.ReverseProxyResponse_ProxyStartResponse:
 			panic("?????")
 		case *transport.ReverseProxyResponse_HttpRequest:
-			request, err := http.NewRequest(x.HttpRequest.Method, fmt.Sprintf("http://localhost:8082/%s", x.HttpRequest.Path), bytes.NewReader([]byte(x.HttpRequest.Body)))
+			localUrl, err := url.Parse(*server)
+			if err != nil {
+				panic(err)
+			}
+			localUrl.Path = x.HttpRequest.Path
+
+			request, err := http.NewRequest(x.HttpRequest.Method, localUrl.String(), bytes.NewReader([]byte(x.HttpRequest.Body)))
 			if err != nil {
 				panic(err)
 			}
@@ -56,7 +84,6 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			fmt.Println(string(y))
 
 			transportResponse := transport.HttpResponse{
 				ResponseCode: int32(re.StatusCode),

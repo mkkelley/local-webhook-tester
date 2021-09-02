@@ -3,13 +3,16 @@ package proxy
 import (
 	"fmt"
 	"local-webhook-tester/transport"
+	"log"
 	"net/url"
+	"os"
 )
 
 type ReverseProxy struct {
 	serverBaseUrl string
 	httpRequests  map[string]chan *transport.HttpRequest
 	httpResponses map[string]chan *transport.HttpResponse
+	logger        *log.Logger
 	transport.UnimplementedHttpReverseProxyServer
 }
 
@@ -24,11 +27,13 @@ func (u UrlInUseError) Error() string {
 func NewReverseProxy(config *ServerConfig) ReverseProxy {
 	requests := make(map[string]chan *transport.HttpRequest)
 	responses := make(map[string]chan *transport.HttpResponse)
+	logger := log.New(os.Stdout, "[grpc] ", log.LstdFlags)
 	return ReverseProxy{
 		serverBaseUrl:                       config.BaseUrl,
 		httpRequests:                        requests,
 		httpResponses:                       responses,
 		UnimplementedHttpReverseProxyServer: transport.UnimplementedHttpReverseProxyServer{},
+		logger:                              logger,
 	}
 }
 
@@ -38,7 +43,7 @@ func (r ReverseProxy) ReverseProxy(server transport.HttpReverseProxy_ReverseProx
 		return err
 	}
 	prefix := generateRandomUrlPrefix()
-	fmt.Printf("starting new proxy on %s", prefix)
+	r.logger.Printf("Starting new proxy on %s", prefix)
 	err = sendProxyUrl(server, baseUrl, prefix, err)
 	if err != nil {
 		return err
@@ -62,6 +67,7 @@ func (r ReverseProxy) ReverseProxy(server transport.HttpReverseProxy_ReverseProx
 
 	for {
 		request := <-requestCh
+		r.logger.Printf("Got request %s", request.Path)
 		requestResponse := &transport.ReverseProxyResponse_HttpRequest{HttpRequest: request}
 		err = server.Send(&transport.ReverseProxyResponse{Response: requestResponse})
 		if err != nil {
@@ -70,6 +76,7 @@ func (r ReverseProxy) ReverseProxy(server transport.HttpReverseProxy_ReverseProx
 
 		httpResponse := &transport.HttpResponse{}
 		err = server.RecvMsg(httpResponse)
+		r.logger.Printf("Got response %d", httpResponse.ResponseCode)
 		if err != nil {
 			return err
 		}
