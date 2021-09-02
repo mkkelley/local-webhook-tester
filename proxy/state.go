@@ -1,6 +1,10 @@
 package proxy
 
+import (
+	"math/rand"
+	"strconv"
+)
+
 func generateRandomUrlPrefix() string {
-	return "123"
-	//return strconv.Itoa(int(rand.Int31()))
+	return strconv.Itoa(int(rand.Int31()))
 }
