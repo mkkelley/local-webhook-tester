@@ -9,20 +9,25 @@ import (
 )
 
 func main() {
-	config := &proxy.ServerConfig{
-		BaseUrl:  "http://localhost:3031/",
-		HttpPort: "3031",
-		GrpcPort: "3032",
+	config, err := proxy.ReadConfig()
+	if err != nil {
+		panic(err)
 	}
 
 	prx := proxy.NewReverseProxy(config)
-	go proxy.RunHttpServer(config, &prx)
+	go func() {
+		fmt.Printf("HTTP will listen on %s\n", config.HttpPort)
+		err = proxy.RunHttpServer(config, &prx)
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	server := grpc.NewServer()
 	server.RegisterService(&transport.HttpReverseProxy_ServiceDesc, prx)
 	listener, _ := net.Listen("tcp", fmt.Sprintf(":%s", config.GrpcPort))
-	fmt.Println("done")
-	err := server.Serve(listener)
+	fmt.Printf("GRPC listening on %s\n", config.GrpcPort)
+	err = server.Serve(listener)
 	if err != nil {
 		panic(err)
 	}

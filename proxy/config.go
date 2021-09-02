@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"fmt"
 	"github.com/spf13/viper"
 )
 
@@ -10,8 +11,7 @@ type ServerConfig struct {
 	GrpcPort string
 }
 
-func readConfig() (*ServerConfig, error) {
-	config := ServerConfig{}
+func ReadConfig() (*ServerConfig, error) {
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
@@ -19,11 +19,15 @@ func readConfig() (*ServerConfig, error) {
 	err := v.ReadInConfig()
 	v.AutomaticEnv()
 	if err != nil {
-		return nil, err
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			fmt.Println("Warning: config file does not exist")
+		} else {
+			return nil, err
+		}
 	}
-	err = v.Unmarshal(&config)
-	if err != nil {
-		return nil, err
-	}
-	return &config, nil
+	return &ServerConfig{
+		BaseUrl:  v.GetString("BASE_URL"),
+		HttpPort: v.GetString("HTTP_PORT"),
+		GrpcPort: v.GetString("GRPC_PORT"),
+	}, nil
 }
