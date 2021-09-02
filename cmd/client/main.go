@@ -81,6 +81,11 @@ func main() {
 				logger.Fatal(err)
 			}
 			localUrl.Path = x.HttpRequest.Path
+			if strings.Contains(localUrl.Path, "?") {
+				split := strings.Split(localUrl.Path, "?")
+				localUrl.Path = split[0]
+				localUrl.RawQuery = split[1]
+			}
 
 			localRequest, err := http.NewRequest(x.HttpRequest.Method, localUrl.String(), bytes.NewReader([]byte(x.HttpRequest.Body)))
 			if err != nil {
