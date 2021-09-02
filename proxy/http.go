@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"io"
 	"local-webhook-tester/transport"
+	"local-webhook-tester/util"
 	"net/http"
 	"time"
 )
@@ -28,15 +29,7 @@ func convertRequest(request *http.Request) (*transport.HttpRequest, error) {
 	if err != nil {
 		return nil, err
 	}
-	headers := make([]string, 0)
-	for header, values := range request.Header {
-		if header == "" {
-			continue
-		}
-		for _, val := range values {
-			headers = append(headers, fmt.Sprintf("%s: %s", header, val))
-		}
-	}
+	headers := util.SerializeHeader(request.Header)
 
 	var fullPath string
 	if request.URL.RawQuery == "" {

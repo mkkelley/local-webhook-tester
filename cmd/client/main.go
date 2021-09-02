@@ -5,10 +5,12 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"io"
 	"local-webhook-tester/transport"
+	"local-webhook-tester/util"
 	"log"
 	"net/http"
 	"net/url"
@@ -30,7 +32,9 @@ func main() {
 	flag.Parse()
 
 	if *runTestServer {
-		go http.ListenAndServe(":8082", http.HandlerFunc(echo))
+		go func() {
+			_ = http.ListenAndServe(":8082", http.HandlerFunc(echo))
+		}()
 	}
 
 	logger := log.New(os.Stdout, "[client] ", log.LstdFlags)
@@ -78,27 +82,27 @@ func main() {
 			}
 			localUrl.Path = x.HttpRequest.Path
 
-			request, err := http.NewRequest(x.HttpRequest.Method, localUrl.String(), bytes.NewReader([]byte(x.HttpRequest.Body)))
-			if *hostHeader != "" {
-				request.Header.Set("Host", *hostHeader)
-			}
+			localRequest, err := http.NewRequest(x.HttpRequest.Method, localUrl.String(), bytes.NewReader([]byte(x.HttpRequest.Body)))
 			if err != nil {
 				logger.Fatal(err)
 			}
-			re, err := http.DefaultClient.Do(request)
+
+			addRequestHeaders(hostHeader, localRequest, logger, x)
+
+			localResponse, err := http.DefaultClient.Do(localRequest)
 			if err != nil {
 				logger.Fatal(err)
 
 			}
-			y, err := io.ReadAll(re.Body)
+			responseBody, err := io.ReadAll(localResponse.Body)
 			if err != nil {
 				logger.Fatal(err)
 			}
 
 			transportResponse := &transport.HttpResponse{
-				ResponseCode: int32(re.StatusCode),
-				Body:         string(y),
-				Headers:      []string{},
+				ResponseCode: int32(localResponse.StatusCode),
+				Body:         string(responseBody),
+				Headers:      util.SerializeHeader(localResponse.Header),
 			}
 			logger.Println("Sending response: ", transportResponse)
 			err = response.Send(transportResponse)
@@ -106,5 +110,21 @@ func main() {
 				logger.Fatal(err)
 			}
 		}
+	}
+}
+
+func addRequestHeaders(hostHeader *string, request *http.Request, logger *log.Logger, x *transport.ReverseProxyResponse_HttpRequest) {
+	if *hostHeader != "" {
+		request.Header.Set("Host", *hostHeader)
+	}
+	for _, header := range x.HttpRequest.Headers {
+		var key string
+		var val string
+		_, err := fmt.Sscanf(header, "%s: %s", key, val)
+		if err != nil {
+			logger.Println(err)
+			continue
+		}
+		request.Header.Add(key, val)
 	}
 }
