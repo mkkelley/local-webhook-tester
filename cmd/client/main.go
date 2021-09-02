@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
-	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"io"
@@ -15,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 func echo(writer http.ResponseWriter, request *http.Request) {
@@ -87,7 +87,7 @@ func main() {
 				logger.Fatal(err)
 			}
 
-			addRequestHeaders(hostHeader, localRequest, logger, x)
+			addRequestHeaders(hostHeader, localRequest, x)
 
 			localResponse, err := http.DefaultClient.Do(localRequest)
 			if err != nil {
@@ -113,18 +113,15 @@ func main() {
 	}
 }
 
-func addRequestHeaders(hostHeader *string, request *http.Request, logger *log.Logger, x *transport.ReverseProxyResponse_HttpRequest) {
+func addRequestHeaders(hostHeader *string, request *http.Request, x *transport.ReverseProxyResponse_HttpRequest) {
 	if *hostHeader != "" {
 		request.Header.Set("Host", *hostHeader)
 	}
 	for _, header := range x.HttpRequest.Headers {
-		var key string
-		var val string
-		_, err := fmt.Sscanf(header, "%s: %s", key, val)
-		if err != nil {
-			logger.Println(err)
-			continue
-		}
+		split := strings.Split(header, ":")
+		key := split[0]
+		val := split[1][1:]
+
 		request.Header.Add(key, val)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"local-webhook-tester/transport"
 	"local-webhook-tester/util"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -47,14 +48,11 @@ func convertRequest(request *http.Request) (*transport.HttpRequest, error) {
 
 func writeResponse(writer http.ResponseWriter, response *transport.HttpResponse) error {
 	for _, header := range response.Headers {
-		name := ""
-		value := ""
-		_, err := fmt.Sscanf(header, "%s: %s", name, value)
-		if err != nil {
-			return err
-		}
+		split := strings.Split(header, ":")
+		key := split[0]
+		val := split[1][1:]
 
-		writer.Header().Add(name, value)
+		writer.Header().Add(key, val)
 	}
 
 	writer.WriteHeader(int(response.ResponseCode))
