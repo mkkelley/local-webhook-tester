@@ -40,7 +40,7 @@ func main() {
 		transportCredentials := credentials.NewTLS(tlsConfig)
 		opts = append(opts, grpc.Creds(transportCredentials))
 	}
-	server := grpc.NewServer()
+	server := grpc.NewServer(opts...)
 	server.RegisterService(&transport.HttpReverseProxy_ServiceDesc, prx)
 	listener, _ := net.Listen("tcp", fmt.Sprintf(":%s", config.GrpcPort))
 	fmt.Printf("GRPC listening on %s\n", config.GrpcPort)
