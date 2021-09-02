@@ -10,10 +10,10 @@ COPY . .
 RUN go mod download
 RUN ./bin/protoc --go_out=. --go_opt=paths=source_relative \
     --go-grpc_out=. --go-grpc_opt=paths=source_relative transport/http.proto
-RUN mkdir out && go build -o out ./cmd/server
+RUN mkdir out && go build -o out ./...
 
 FROM alpine
 RUN addgroup -S go && adduser -S go -G go
 USER go:go
-COPY --from=build out/* .
+COPY --from=build app/out/* .
 ENTRYPOINT ["server"]
