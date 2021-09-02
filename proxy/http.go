@@ -38,9 +38,15 @@ func convertRequest(request *http.Request) (*transport.HttpRequest, error) {
 		}
 	}
 
+	var fullPath string
+	if request.URL.RawQuery != "" {
+		fullPath = path
+	} else {
+		fullPath = fmt.Sprintf("%s?%s", path, request.URL.RawQuery)
+	}
 	return &transport.HttpRequest{
 		Method:  request.Method,
-		Path:    fmt.Sprintf("%s?%s", path, request.URL.RawQuery),
+		Path:    fullPath,
 		Body:    string(bodyString),
 		Headers: headers,
 	}, nil

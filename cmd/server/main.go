@@ -7,7 +7,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"local-webhook-tester/proxy"
 	"local-webhook-tester/transport"
+	"math/rand"
 	"net"
+	"time"
 )
 
 func main() {
@@ -16,6 +18,7 @@ func main() {
 		panic(err)
 	}
 
+	rand.Seed(time.Now().UnixMilli())
 	prx := proxy.NewReverseProxy(config)
 	go func() {
 		fmt.Printf("HTTP will listen on %s\n", config.HttpPort)

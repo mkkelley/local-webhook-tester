@@ -21,10 +21,11 @@ func echo(writer http.ResponseWriter, request *http.Request) {
 }
 
 func main() {
-	allowInsecure := flag.Bool("insecure", false, "Allow the GRPC client to connect over HTTP")
+	allowPlaintext := flag.Bool("plaintext", false, "Allow the GRPC client to connect over HTTP")
 	proxyServer := flag.String("proxy-server", "proxy-conn.minthe.net:443", "GRPC server URL")
 	server := flag.String("server", "http://localhost:8082", "URL to which to proxy requests")
 	runTestServer := flag.Bool("run-test-server", false, "")
+	hostHeader := flag.String("host", "", "Set a host header for local reeuests")
 
 	flag.Parse()
 
@@ -35,7 +36,7 @@ func main() {
 	logger := log.New(os.Stdout, "[client] ", log.LstdFlags)
 
 	var opts []grpc.DialOption
-	if *allowInsecure {
+	if *allowPlaintext {
 		opts = append(opts, grpc.WithInsecure())
 	} else {
 		tlsConfig := tls.Config{}
@@ -57,47 +58,52 @@ func main() {
 		panic(err)
 	}
 	sr := message.Response.(*transport.ReverseProxyResponse_ProxyStartResponse)
-	logger.Printf("Set http calls to point to %s", sr.ProxyStartResponse.BaseUrl)
+	logger.Printf("Set http calls to point to %s/", sr.ProxyStartResponse.BaseUrl)
 
 	for {
 		req := transport.ReverseProxyResponse{}
 		err = response.RecvMsg(&req)
 		if err != nil {
-			panic(err)
+			logger.Fatal(err)
 		}
-		logger.Println(req.Response)
+		logger.Println("Got request: ", req.Response)
 
 		switch x := req.Response.(type) {
 		case *transport.ReverseProxyResponse_ProxyStartResponse:
-			panic("?????")
+			logger.Fatal("?????")
 		case *transport.ReverseProxyResponse_HttpRequest:
 			localUrl, err := url.Parse(*server)
 			if err != nil {
-				panic(err)
+				logger.Fatal(err)
 			}
 			localUrl.Path = x.HttpRequest.Path
 
 			request, err := http.NewRequest(x.HttpRequest.Method, localUrl.String(), bytes.NewReader([]byte(x.HttpRequest.Body)))
+			if *hostHeader != "" {
+				request.Header.Set("Host", *hostHeader)
+			}
 			if err != nil {
-				panic(err)
+				logger.Fatal(err)
 			}
 			re, err := http.DefaultClient.Do(request)
 			if err != nil {
-				panic(err)
+				logger.Fatal(err)
+
 			}
 			y, err := io.ReadAll(re.Body)
 			if err != nil {
-				panic(err)
+				logger.Fatal(err)
 			}
 
-			transportResponse := transport.HttpResponse{
+			transportResponse := &transport.HttpResponse{
 				ResponseCode: int32(re.StatusCode),
 				Body:         string(y),
 				Headers:      []string{},
 			}
-			err = response.Send(&transportResponse)
+			logger.Println("Sending response: ", transportResponse)
+			err = response.Send(transportResponse)
 			if err != nil {
-				panic(err)
+				logger.Fatal(err)
 			}
 		}
 	}
