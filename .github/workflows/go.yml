@@ -1,0 +1,47 @@
+name: Go
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+
+    - name: Build Linux
+      run: go build -v -o client_linux ./cmd/client
+      env:
+        GOOS: linux
+    - name: Build Darwin
+      run: go build -v -o client_darwin ./cmd/client
+      env:
+        GOOS: darwin
+    - name: Build Windows
+      run: go build -v -o client_windows.exe ./cmd/client
+      env:
+        GOOS: windows
+    - name: Upload Linux
+      uses: actions/upload-artifact@v2.2.4
+      with:
+        name: client_linux
+        path: client_linux
+    - name: Upload Darwin
+      uses: actions/upload-artifact@v2.2.4
+      with:
+        name: client_darwin
+        path: client_darwin
+    - name: Upload Windows
+      uses: actions/upload-artifact@v2.2.4
+      with:
+        name: client_windows.exe
+        path: client_windows.exe
