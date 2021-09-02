@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"flag"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"io"
 	"local-webhook-tester/transport"
 	"log"
@@ -20,7 +22,7 @@ func echo(writer http.ResponseWriter, request *http.Request) {
 
 func main() {
 	allowInsecure := flag.Bool("insecure", false, "Allow the GRPC client to connect over HTTP")
-	proxyServer := flag.String("proxy-server", "localhost:3032", "GRPC server URL")
+	proxyServer := flag.String("proxy-server", "proxy-conn.minthe.net:443", "GRPC server URL")
 	server := flag.String("server", "http://localhost:8082", "URL to which to proxy requests")
 	runTestServer := flag.Bool("run-test-server", false, "")
 
@@ -35,6 +37,9 @@ func main() {
 	var opts []grpc.DialOption
 	if *allowInsecure {
 		opts = append(opts, grpc.WithInsecure())
+	} else {
+		tlsConfig := tls.Config{}
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tlsConfig)))
 	}
 
 	conn, err := grpc.Dial(*proxyServer, opts...)

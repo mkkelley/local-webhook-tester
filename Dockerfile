@@ -11,4 +11,8 @@ RUN go mod download
 RUN ./bin/protoc --go_out=. --go_opt=paths=source_relative \
     --go-grpc_out=. --go-grpc_opt=paths=source_relative transport/http.proto
 RUN mkdir out && go build -o out ./cmd/server
+RUN openssl req -x509 -newkey rsa:4096 -days 365 -nodes -keyout ca-key.pem -out ca-cert.pem -subj "/C=US/" && \
+    openssl req -newkey rsa:4096 -nodes -keyout server-key.pem -out server-req.pem -subj "/C=FR/" && \
+    openssl x509 -req -in server-req.pem -days 60 -CA ca-cert.pem -CAkey ca-key.pem -CAcreateserial -out server-cert.pem -extfile server-ext.cnf
+
 ENTRYPOINT ["/app/out/server"]

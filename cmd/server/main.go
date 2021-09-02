@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"local-webhook-tester/proxy"
 	"local-webhook-tester/transport"
 	"net"
@@ -23,6 +25,21 @@ func main() {
 		}
 	}()
 
+	var opts []grpc.ServerOption
+	if config.UseTls {
+		cert, err := tls.LoadX509KeyPair("server-cert.pem", "server-key.pem")
+		if err != nil {
+			panic(err)
+		}
+
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			ClientAuth:   tls.NoClientCert,
+		}
+
+		transportCredentials := credentials.NewTLS(tlsConfig)
+		opts = append(opts, grpc.Creds(transportCredentials))
+	}
 	server := grpc.NewServer()
 	server.RegisterService(&transport.HttpReverseProxy_ServiceDesc, prx)
 	listener, _ := net.Listen("tcp", fmt.Sprintf(":%s", config.GrpcPort))
