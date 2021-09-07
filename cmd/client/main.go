@@ -19,7 +19,7 @@ import (
 
 func echo(writer http.ResponseWriter, request *http.Request) {
 	b, _ := io.ReadAll(request.Body)
-	_, _ = writer.Write([]byte(b))
+	_, _ = writer.Write(b)
 }
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 	proxyServer := flag.String("proxy-server", "proxy-conn.minthe.net:443", "GRPC server URL")
 	server := flag.String("server", "http://localhost:8082", "URL to which to proxy requests")
 	runTestServer := flag.Bool("run-test-server", false, "")
-	hostHeader := flag.String("host", "", "Set a host header for local reeuests")
+	hostHeader := flag.String("host", "", "Set a host header for local requests")
 
 	flag.Parse()
 
@@ -81,11 +81,7 @@ func main() {
 				logger.Fatal(err)
 			}
 			localUrl.Path = x.HttpRequest.Path
-			if strings.Contains(localUrl.Path, "?") {
-				split := strings.Split(localUrl.Path, "?")
-				localUrl.Path = split[0]
-				localUrl.RawQuery = split[1]
-			}
+			localUrl.RawQuery = x.HttpRequest.RawQuery
 
 			localRequest, err := http.NewRequest(x.HttpRequest.Method, localUrl.String(), bytes.NewReader([]byte(x.HttpRequest.Body)))
 			if err != nil {
@@ -108,6 +104,7 @@ func main() {
 				ResponseCode: int32(localResponse.StatusCode),
 				Body:         string(responseBody),
 				Headers:      util.SerializeHeader(localResponse.Header),
+				RequestId:    x.HttpRequest.RequestId,
 			}
 			logger.Println("Sending response: ", transportResponse)
 			err = response.Send(transportResponse)

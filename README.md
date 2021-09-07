@@ -12,4 +12,5 @@ server and respond to the original caller with the response from the local serve
 Limitations
 - Only one request at a time can be processed behind the grpc server. The server
 can queue HTTP requests normally
+  - Working on this
 - There's a 5-minute timeout on http requests to the grpc server. This can be changed

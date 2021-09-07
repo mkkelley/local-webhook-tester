@@ -8,12 +8,15 @@ message HttpRequest {
   string path = 2;
   string body = 3;
   repeated string headers = 4;
+  string raw_query = 5;
+  int64 request_id = 6;
 }
 
 message HttpResponse {
   int32 response_code = 1;
   string body = 2;
   repeated string headers = 3;
+  int64 request_id = 4;
 }
 
 message ProxyStartResponse {
