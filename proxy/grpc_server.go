@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"context"
-	"fmt"
 	"google.golang.org/grpc/peer"
 	"local-webhook-tester/transport"
 	"log"
@@ -25,18 +24,6 @@ type ReverseProxyServer struct {
 type transportRequestWithContext struct {
 	httpRequest *transport.HttpRequest
 	ctx         context.Context
-}
-
-type HttpForwardProxy interface {
-	ProxyRequest(ctx context.Context, request *http.Request) <-chan *transport.HttpResponse
-}
-
-type UrlInUseError struct {
-	PathPrefix string
-}
-
-func (u UrlInUseError) Error() string {
-	return fmt.Sprintf("Path prefix %s already in use", u.PathPrefix)
 }
 
 func NewReverseProxy(config *ServerConfig) ReverseProxyServer {
